@@ -1,8 +1,8 @@
 package grpc
 
 import (
-	"../logger"
 	"context"
+	"github.com/opay-o2o/golib/logger"
 	"google.golang.org/grpc"
 	"net"
 	"strconv"

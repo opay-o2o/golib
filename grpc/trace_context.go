@@ -1,9 +1,9 @@
 package grpc
 
 import (
-	"../net2"
 	"context"
 	"fmt"
+	"github.com/opay-o2o/golib/net2"
 	"google.golang.org/grpc/metadata"
 	"strconv"
 	"strings"

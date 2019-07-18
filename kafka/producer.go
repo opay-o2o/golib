@@ -1,10 +1,10 @@
 package kafka
 
 import (
-	"../logger"
 	"context"
 	"errors"
 	"github.com/Shopify/sarama"
+	"github.com/opay-o2o/golib/logger"
 	"sync"
 	"time"
 )

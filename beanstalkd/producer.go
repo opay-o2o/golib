@@ -1,11 +1,11 @@
 package beanstalkd
 
 import (
-	"../logger"
 	"context"
 	"errors"
 	"fmt"
 	"github.com/kr/beanstalk"
+	"github.com/opay-o2o/golib/logger"
 	"sync"
 	"time"
 )

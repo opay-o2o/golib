@@ -1,11 +1,11 @@
 package gorm
 
 import (
-	"../logger"
 	"errors"
 	"fmt"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
+	"github.com/opay-o2o/golib/logger"
 	"strings"
 	"sync"
 	"time"

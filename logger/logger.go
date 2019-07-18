@@ -1,10 +1,10 @@
 package logger
 
 import (
-	"../net2"
 	"bufio"
 	"bytes"
 	"fmt"
+	"github.com/opay-o2o/golib/net2"
 	"os"
 	"path"
 	"runtime"

@@ -1,9 +1,9 @@
 package http
 
 import (
-	"../strings2"
 	"bytes"
 	"fmt"
+	"github.com/opay-o2o/golib/strings2"
 	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"

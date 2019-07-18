@@ -3,10 +3,10 @@ package grpc
 import (
 	"context"
 	"fmt"
-	"sync"
-	"time"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
+	"sync"
+	"time"
 )
 
 const (

@@ -1,13 +1,13 @@
 package http
 
 import (
-	"../logger"
 	stdContext "context"
 	"fmt"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 	"github.com/kataras/iris/middleware/pprof"
 	"github.com/kataras/iris/websocket"
+	"github.com/opay-o2o/golib/logger"
 	"runtime"
 	"strconv"
 	"strings"

@@ -1,10 +1,10 @@
 package kafka
 
 import (
-	"../logger"
 	"context"
 	"github.com/Shopify/sarama"
 	cluster "github.com/bsm/sarama-cluster"
+	"github.com/opay-o2o/golib/logger"
 	"sync"
 )
 
