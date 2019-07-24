@@ -130,6 +130,16 @@ func Range(start int, end int) []int {
 	return nums
 }
 
+func InFloatArray(value float64, list []float64) bool {
+	for _, v := range list {
+		if v == value {
+			return true
+		}
+	}
+
+	return false
+}
+
 func InArray(value int, list []int) bool {
 	for _, v := range list {
 		if v == value {
