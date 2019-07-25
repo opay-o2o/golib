@@ -86,7 +86,17 @@ func RoundInt(x float64) int {
 	return int(math.Floor(x + 0.5))
 }
 
-func CeilMode(n, m int) int {
+func Ceil(n, m int64) int64 {
+	v := n / m
+
+	if v*m < n {
+		return v + 1
+	}
+
+	return v
+}
+
+func CeilInt(n, m int) int {
 	v := n / m
 
 	if v*m < n {
