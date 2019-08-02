@@ -6,7 +6,6 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"github.com/opay-o2o/golib/logger"
-	"github.com/opay-o2o/golib/math2"
 	"strings"
 	"sync"
 	"time"
@@ -19,6 +18,7 @@ type Config struct {
 	Password     string `toml:"password"`
 	Charset      string `toml:"charset"`
 	Database     string `toml:"database"`
+	Timeout      int    `toml:"timeout" json:"timeout"`
 	MaxOpenConns int    `toml:"max_open_conns" json:"max_open_conns"`
 	MaxIdleConns int    `toml:"max_idle_conns" json:"max_idle_conns"`
 	MaxConnTtl   int    `toml:"max_conn_ttl" json:"max_conn_ttl"`
@@ -26,8 +26,12 @@ type Config struct {
 }
 
 func (c *Config) GetDsn() string {
-	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local",
-		c.User, c.Password, c.Host, c.Port, c.Database, c.Charset)
+	if c.Timeout <= 0 {
+		c.Timeout = 3
+	}
+
+	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local&timeout=%ds",
+		c.User, c.Password, c.Host, c.Port, c.Database, c.Charset, c.Timeout)
 }
 
 type Logger struct {
@@ -71,14 +75,19 @@ func (p *Pool) Add(name string, c *Config) error {
 		return err
 	}
 
-	maxIdleConns := math2.IIfInt(c.MaxIdleConns <= 0, 10, c.MaxIdleConns)
-	maxOpenConns := math2.IIfInt(c.MaxOpenConns <= 0, 100, c.MaxOpenConns)
-	maxConnTtl := math2.IIfInt(c.MaxConnTtl <= 0, 600, c.MaxConnTtl)
-
 	db := orm.DB()
-	db.SetMaxIdleConns(maxIdleConns)
-	db.SetMaxOpenConns(maxOpenConns)
-	db.SetConnMaxLifetime(time.Duration(maxConnTtl) * time.Second)
+
+	if c.MaxIdleConns > 0 {
+		db.SetMaxIdleConns(c.MaxIdleConns)
+	}
+
+	if c.MaxOpenConns > 0 {
+		db.SetMaxOpenConns(c.MaxOpenConns)
+	}
+
+	if c.MaxConnTtl > 0 {
+		db.SetConnMaxLifetime(time.Duration(c.MaxConnTtl) * time.Second)
+	}
 
 	if c.Debug {
 		orm.LogMode(true)
