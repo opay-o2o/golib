@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-const SignalFormat  =  "2006-01-02 15:04:05"
-const SignalFormatWithZone  =  "2006-01-02 15:04:05 MST"
+const SignalFormat = "2006-01-02 15:04:05"
+const SignalFormatWithZone = "2006-01-02 15:04:05 MST"
 
 type IProvider interface {
 	Init() error
@@ -17,9 +17,14 @@ type IProvider interface {
 }
 
 type Provider struct {
-	Name         string    `toml:"name" json:"name"`
-	TimeRule     string    `toml:"interval" json:"interval"`
-	Interval     *Interval `toml:"-" json:"-"`
+	Name     string    `toml:"name" json:"name"`
+	TimeRule string    `toml:"interval" json:"interval"`
+	Interval *Interval `toml:"-" json:"-"`
+}
+
+func (p *Provider) Init() (err error) {
+	err, p.Interval = NewInterval(p.TimeRule)
+	return
 }
 
 func (p *Provider) GetName() string {

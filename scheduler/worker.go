@@ -91,12 +91,17 @@ func (w *Worker) Done() {
 	<-w.endSign
 }
 
-func NewWorker(p IProvider, l *logger.Logger, ctx context.Context) *Worker {
-	return &Worker{
+func NewWorker(p IProvider, l *logger.Logger, ctx context.Context) (worker *Worker, err error) {
+	if err = p.Init(); err != nil {
+		return
+	}
+
+	worker = &Worker{
 		provider:  p,
 		logger:    l,
 		ctx:       ctx,
 		loopTimer: make(chan *Point, 1),
 		endSign:   make(chan bool, 1),
 	}
+	return
 }

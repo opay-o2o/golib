@@ -41,9 +41,14 @@ func NewMaster(providers []IProvider, l *logger.Logger) *Master {
 	master.baseCtx, master.stopFunc = context.WithCancel(context.Background())
 
 	for _, p := range providers {
-		if worker := NewWorker(p, l, master.baseCtx); worker != nil {
-			master.workers[worker.provider.GetName()] = worker
+		worker, err := NewWorker(p, l, master.baseCtx)
+
+		if err != nil {
+			l.Errorf("[%s] init failed | error: %s", p.GetName(), err)
+			continue
 		}
+
+		master.workers[worker.provider.GetName()] = worker
 	}
 
 	return master
