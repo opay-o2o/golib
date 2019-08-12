@@ -169,3 +169,17 @@ func ToInt32List(list []int) []int32 {
 
 	return ns
 }
+
+func SameArray(a1 []int64, a2 []int64) bool {
+	if len(a1) != len(a2) {
+		return false
+	}
+
+	for k, v := range a1 {
+		if a2[k] != v {
+			return false
+		}
+	}
+
+	return true
+}
