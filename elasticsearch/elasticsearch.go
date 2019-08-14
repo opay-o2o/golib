@@ -17,6 +17,7 @@ type Client struct {
 func (c *Client) start() error {
 	client, err := elastic.NewClient(
 		elastic.SetURL(c.config.Addrs...),
+		elastic.SetSniff(false),
 	)
 
 	if err != nil {
