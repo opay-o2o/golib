@@ -87,6 +87,7 @@ func GetClientIp(ctx context.Context) string {
 type Router interface {
 	RegHttpHandler(app *iris.Application)
 	WebsocketRouter(wsConn websocket.Connection)
+	GetIdentifier(ctx context.Context) string
 }
 
 type Server struct {
@@ -145,7 +146,10 @@ func (s *Server) AccessLog(ctx context.Context) {
 	start := time.Now()
 	ctx.Next()
 
-	s.logger.Infof("request: %v | %4v | %s | %s %s | %s", strconv.Itoa(ctx.GetStatusCode()), time.Since(start), GetClientIp(ctx), ctx.Method(), ctx.Request().URL.RequestURI(), ctx.GetHeader("User-Agent"))
+	idf := s.router.GetIdentifier(ctx)
+	statusCode, useTime, clientIp := ctx.GetStatusCode(), time.Since(start), GetClientIp(ctx)
+	uri, method, userAgent := ctx.Request().URL.RequestURI(), ctx.Method() , ctx.GetHeader("User-Agent")
+	s.logger.Infof("request: %d | %4v | %s | %s %s | %s | %s", statusCode, useTime, clientIp, method, uri, userAgent, idf)
 }
 
 func CrossDomain(ctx context.Context) {
