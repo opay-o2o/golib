@@ -54,10 +54,7 @@ func DefaultConfig() *Config {
 		Port:    80,
 		Charset: "UTF-8",
 		Websocket: &WsConfig{
-			Enable:   true,
-			Endpoint: "/ws",
-			Library:  "/ws.js",
-			IdleTime: 60,
+			Enable: false,
 		},
 		Tls: &TlsConfig{
 			Enable: false,
@@ -148,7 +145,7 @@ func (s *Server) AccessLog(ctx context.Context) {
 
 	idf := s.router.GetIdentifier(ctx)
 	statusCode, useTime, clientIp := ctx.GetStatusCode(), time.Since(start), GetClientIp(ctx)
-	uri, method, userAgent := ctx.Request().URL.RequestURI(), ctx.Method() , ctx.GetHeader("User-Agent")
+	uri, method, userAgent := ctx.Request().URL.RequestURI(), ctx.Method(), ctx.GetHeader("User-Agent")
 	s.logger.Infof("request: %d | %4v | %s | %s %s | %s | %s", statusCode, useTime, clientIp, method, uri, userAgent, idf)
 }
 

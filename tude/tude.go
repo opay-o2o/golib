@@ -5,9 +5,7 @@ import (
 )
 
 const (
-	R            = 6371000
-	MaxSpeed     = 30.0
-	MaxFindRange = 10
+	R = 6371000
 )
 
 type Shape interface {
@@ -74,65 +72,4 @@ func Angle(p1, p2 *Point) float64 {
 	}
 
 	return angle * 180 / math.Pi
-}
-
-func CleanPoints(points []*TimePoint) (ret []*TimePoint, err error) {
-	defer func() {
-		if e := recover(); e != nil {
-			ret = points
-			err = e.(error)
-		}
-	}()
-
-	n := len(points)
-
-	if n == 0 {
-		return points, nil
-	}
-
-	f := make([]float64, n)
-	g := make([]int, n)
-
-	var maxDis float64
-	var o int
-
-	for i := 0; i < n; i++ {
-		f[i], g[i] = 0, i
-
-		for j := i - 1; j >= 0 && j >= i-MaxFindRange; j-- {
-			dis := Distance(points[i].point, points[j].point)
-
-			if f[j]+dis > f[i] && float64(points[i].timestamp-points[j].timestamp)*MaxSpeed >= dis {
-				f[i] = f[j] + dis
-				g[i] = j
-			}
-		}
-
-		if f[i] > maxDis {
-			maxDis = f[i]
-			o = i
-		}
-	}
-
-	indices := make([]int, n)
-	cnt := 0
-
-	for {
-		indices[cnt] = o
-		cnt++
-
-		if g[o] == o {
-			break
-		}
-
-		o = g[o]
-	}
-
-	ret = make([]*TimePoint, cnt)
-
-	for i := 0; i < cnt; i++ {
-		ret[i] = points[indices[cnt-i-1]]
-	}
-
-	return ret, nil
 }
