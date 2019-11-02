@@ -32,8 +32,7 @@ func (w *Worker) SendSign(signal string) error {
 			return fmt.Errorf("[%s] signal fotmat error: '%s'", w.provider.GetName(), signal)
 		}
 
-		localZone, _ := time.Now().Zone()
-		signTime, err := time.Parse(SignalFormatWithZone, signal+" "+localZone)
+		signTime, err := time.ParseInLocation(SignalFormat, signal, time.Local)
 
 		if err != nil {
 			return fmt.Errorf("[%s] signal fotmat error: '%s'", w.provider.GetName(), signal)

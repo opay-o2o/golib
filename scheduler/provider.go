@@ -5,8 +5,7 @@ import (
 	"time"
 )
 
-const SignalFormat = "2006-01-02 15:04:05"
-const SignalFormatWithZone = "2006-01-02 15:04:05 MST"
+const SignalFormat = "20060102150405"
 
 type IProvider interface {
 	Init() error
