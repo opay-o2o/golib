@@ -1,0 +1,40 @@
+package time2
+
+import "time"
+
+const (
+	DateLayout     = "20060102"
+	DateTimeLayout = "2006-01-02 15:04:05"
+)
+
+func Now(loc ...*time.Location) (now time.Time) {
+	_loc := time.Local
+
+	if len(loc) > 0 {
+		_loc = loc[0]
+	}
+
+	return time.Now().In(_loc)
+}
+
+func TodayStart(t time.Time, loc ...*time.Location) (daystart time.Time) {
+	_loc := time.Local
+
+	if len(loc) > 0 {
+		_loc = loc[0]
+	}
+
+	locDate := Fromat(t, DateLayout, _loc)
+	locDaystart, _ := time.ParseInLocation(DateLayout, locDate, _loc)
+	return locDaystart
+}
+
+func Fromat(t time.Time, layout string, loc ...*time.Location) (dtStr string) {
+	_loc := time.Local
+
+	if len(loc) > 0 {
+		_loc = loc[0]
+	}
+
+	return t.In(_loc).Format(layout)
+}
