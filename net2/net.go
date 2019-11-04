@@ -1,6 +1,9 @@
 package net2
 
-import "net"
+import (
+	"net"
+	"strings"
+)
 
 func GetLocalIp() (ip string, err error) {
 	addrs, err := net.InterfaceAddrs()
@@ -40,4 +43,23 @@ func GetInterfaceIp(name string) (ip string, err error) {
 	}
 
 	return
+}
+
+func InIpList(ip string, ips []string) bool {
+	items := strings.Split(ip, ".")
+
+	if len(items) != 4 {
+		return false
+	}
+
+	ipC := strings.Join(items[:3], ".") + ".*"
+	ipB := strings.Join(items[:2], ".") + ".*.*"
+
+	for _, v := range ips {
+		if v == ip || v == ipC || v == ipB {
+			return true
+		}
+	}
+
+	return false
 }
