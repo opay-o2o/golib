@@ -39,6 +39,10 @@ func Format(t time.Time, layout string, loc ...*time.Location) string {
 	return t.In(_loc).Format(layout)
 }
 
+func FormatD(t time.Time, loc ...*time.Location) string {
+	return Format(t, DateLayout, loc...)
+}
+
 func FormatDt(t time.Time, loc ...*time.Location) string {
 	return Format(t, DateTimeLayout, loc...)
 }
