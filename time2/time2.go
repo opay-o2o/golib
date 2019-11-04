@@ -7,7 +7,7 @@ const (
 	DateTimeLayout = "2006-01-02 15:04:05"
 )
 
-func Now(loc ...*time.Location) (now time.Time) {
+func Now(loc ...*time.Location) time.Time {
 	_loc := time.Local
 
 	if len(loc) > 0 {
@@ -17,19 +17,19 @@ func Now(loc ...*time.Location) (now time.Time) {
 	return time.Now().In(_loc)
 }
 
-func TodayStart(t time.Time, loc ...*time.Location) (daystart time.Time) {
+func TodayStart(t time.Time, loc ...*time.Location) time.Time {
 	_loc := time.Local
 
 	if len(loc) > 0 {
 		_loc = loc[0]
 	}
 
-	locDate := Fromat(t, DateLayout, _loc)
+	locDate := Format(t, DateLayout, _loc)
 	locDaystart, _ := time.ParseInLocation(DateLayout, locDate, _loc)
 	return locDaystart
 }
 
-func Fromat(t time.Time, layout string, loc ...*time.Location) (dtStr string) {
+func Format(t time.Time, layout string, loc ...*time.Location) string {
 	_loc := time.Local
 
 	if len(loc) > 0 {
@@ -37,4 +37,8 @@ func Fromat(t time.Time, layout string, loc ...*time.Location) (dtStr string) {
 	}
 
 	return t.In(_loc).Format(layout)
+}
+
+func FormatDt(t time.Time, loc ...*time.Location) string {
+	return Format(t, DateTimeLayout, loc...)
 }
