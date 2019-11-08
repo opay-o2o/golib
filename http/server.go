@@ -3,10 +3,11 @@ package http
 import (
 	stdContext "context"
 	"fmt"
-	"github.com/kataras/iris"
-	"github.com/kataras/iris/context"
-	"github.com/kataras/iris/middleware/pprof"
-	"github.com/kataras/iris/websocket"
+	"github.com/kataras/iris/v12"
+	"github.com/kataras/iris/v12/context"
+	"github.com/kataras/iris/v12/middleware/pprof"
+	"github.com/kataras/iris/v12/websocket"
+	"github.com/kataras/neffos"
 	"github.com/opay-o2o/golib/logger"
 	"runtime"
 	"strconv"
@@ -18,7 +19,6 @@ import (
 type WsConfig struct {
 	Enable   bool          `toml:"enable"`
 	Endpoint string        `toml:"endpoint"`
-	Library  string        `toml:"library"`
 	IdleTime time.Duration `toml:"idle_time"`
 }
 
@@ -82,8 +82,10 @@ func GetClientIp(ctx context.Context) string {
 }
 
 type Router interface {
-	RegHttpHandler(app *iris.Application)
-	WebsocketRouter(wsConn websocket.Connection)
+	RegHttpHandlers(app *iris.Application)
+	WebsocketConnectHandler(conn *neffos.Conn) error
+	WebsocketDisconnectHandler(conn *neffos.Conn)
+	WebsocketMessageHandler(conn *websocket.NSConn, msg websocket.Message) error
 	GetIdentifier(ctx context.Context) string
 }
 
@@ -92,7 +94,7 @@ type Server struct {
 	config   *Config
 	router   Router
 	app      *iris.Application
-	ws       *websocket.Server
+	ws       *neffos.Server
 	logger   *logger.Logger
 	ctx      stdContext.Context
 	canceler func()
@@ -192,8 +194,8 @@ func (s *Server) Stop() {
 	}
 }
 
-func (s *Server) GetWsConn(connId string) websocket.Connection {
-	return s.ws.GetConnection(connId)
+func (s *Server) GetWsConn(connId string) *neffos.Conn {
+	return s.ws.GetConnections()[connId]
 }
 
 func NewServer(c *Config, r Router, l *logger.Logger) *Server {
@@ -223,20 +225,20 @@ func NewServer(c *Config, r Router, l *logger.Logger) *Server {
 	server.app.Logger().Printer.IsTerminal = c.Log.Color
 
 	// set route
-	server.router.RegHttpHandler(server.app)
+	server.router.RegHttpHandlers(server.app)
 
 	// set websocket
 	if c.Websocket.Enable {
-		server.ws = websocket.New(websocket.Config{
-			ReadBufferSize:  1024,
-			WriteBufferSize: 1024,
-			ReadTimeout:     c.Websocket.IdleTime * time.Second,
+		server.ws = websocket.New(websocket.DefaultGorillaUpgrader, neffos.WithTimeout{
+			ReadTimeout: c.Websocket.IdleTime * time.Second,
+			Events: neffos.Events{
+				websocket.OnNativeMessage: server.router.WebsocketMessageHandler,
+			},
 		})
 
-		server.ws.OnConnection(server.router.WebsocketRouter)
-
-		server.app.Get(c.Websocket.Endpoint, server.ws.Handler())
-		server.app.Any(c.Websocket.Library, websocket.ClientHandler())
+		server.ws.OnConnect = server.router.WebsocketConnectHandler
+		server.ws.OnDisconnect = server.router.WebsocketDisconnectHandler
+		server.app.Get(c.Websocket.Endpoint, websocket.Handler(server.ws))
 	}
 
 	return server
