@@ -99,7 +99,7 @@ func (c *Cache) GetAll() map[string]interface{} {
 	items := make(map[string]interface{}, len(c.items))
 
 	for key, item := range c.items {
-		if item.expire > 0 && nowTime > item.createAt+item.expire {
+		if item.expire == 0 || nowTime < item.createAt+item.expire {
 			items[key] = item.data
 		}
 	}
