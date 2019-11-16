@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc/peer"
 	"net"
 	"strings"
+	"time"
 )
 
 var (
@@ -74,7 +75,7 @@ func New(name, env string, buckets ...float64) *Prometheus {
 	return &p
 }
 
-func (p *Prometheus) Trigger(ctx context.Context, host, method string, useTime float64) {
+func (p *Prometheus) Trigger(ctx context.Context, host, method string, startTime time.Time) {
 	clientIp, err := getClietIP(ctx)
 
 	if err != nil {
@@ -82,5 +83,7 @@ func (p *Prometheus) Trigger(ctx context.Context, host, method string, useTime f
 	}
 
 	p.reqs.WithLabelValues(method, host, clientIp).Inc()
+
+	useTime := float64(time.Since(startTime).Nanoseconds()) / 1000000000
 	p.latency.WithLabelValues(method, host, clientIp).Observe(useTime)
 }
