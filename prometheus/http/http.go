@@ -3,6 +3,8 @@ package http
 import (
 	"github.com/kataras/iris/context"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"net/http"
 	"strconv"
 	"time"
 )
@@ -69,4 +71,8 @@ func (p *Prometheus) ServeHTTP(ctx context.Context) {
 
 	p.latency.WithLabelValues(statusCode, r.Method, r.URL.Path).
 		Observe(float64(time.Since(start).Nanoseconds()) / 1000000000)
+}
+
+func (p *Prometheus) MetricsHandler() http.Handler {
+	return promhttp.Handler()
 }
