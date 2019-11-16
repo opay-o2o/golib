@@ -1,12 +1,10 @@
-package prometheus
+package http
 
 import (
-	"context"
-	"fmt"
+	"github.com/kataras/iris/context"
 	"github.com/prometheus/client_golang/prometheus"
-	"google.golang.org/grpc/peer"
-	"net"
-	"strings"
+	"strconv"
+	"time"
 )
 
 var (
@@ -15,23 +13,9 @@ var (
 )
 
 const (
-	reqsName    = "grpc_requests_total"
-	latencyName = "grpc_request_duration_seconds"
+	reqsName    = "http_requests_total"
+	latencyName = "http_request_duration_seconds"
 )
-
-func getClietIP(ctx context.Context) (string, error) {
-	pr, ok := peer.FromContext(ctx)
-
-	if !ok {
-		return "", fmt.Errorf("invoke FromContext() failed")
-	}
-
-	if pr.Addr == net.Addr(nil) {
-		return "", fmt.Errorf("peer.Addr is nil")
-	}
-
-	return strings.Split(pr.Addr.String(), ":")[0], nil
-}
 
 // Prometheus is a handler that exposes prometheus metrics for the number of requests,
 // the latency and the response size, partitioned by status code, method and HTTP path.
@@ -50,10 +34,10 @@ func New(name string, buckets ...float64) *Prometheus {
 	p.reqs = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name:        reqsName,
-			Help:        "How many GRPC requests processed, partitioned by method, server ip, client ip.",
+			Help:        "How many HTTP requests processed, partitioned by status code, method and HTTP path.",
 			ConstLabels: prometheus.Labels{"service": name},
 		},
-		[]string{"method", "server_ip", "client_ip"},
+		[]string{"code", "method", "path"},
 	)
 	prometheus.MustRegister(p.reqs)
 
@@ -63,24 +47,26 @@ func New(name string, buckets ...float64) *Prometheus {
 
 	p.latency = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:        latencyName,
-		Help:        "How long it took to process the request, partitioned by method, server ip, client ip.",
+		Help:        "How long it took to process the request, partitioned by status code, method and HTTP path.",
 		ConstLabels: prometheus.Labels{"service": name},
 		Buckets:     buckets,
 	},
-		[]string{"method", "server_ip", "client_ip"},
+		[]string{"code", "method", "path"},
 	)
 	prometheus.MustRegister(p.latency)
 
 	return &p
 }
 
-func (p *Prometheus) Trigger(ctx context.Context, host, method string, useTime float64) {
-	clientIp, err := getClietIP(ctx)
+func (p *Prometheus) ServeHTTP(ctx context.Context) {
+	start := time.Now()
+	ctx.Next()
+	r := ctx.Request()
+	statusCode := strconv.Itoa(ctx.GetStatusCode())
 
-	if err != nil {
-		clientIp = "unknown"
-	}
+	p.reqs.WithLabelValues(statusCode, r.Method, r.URL.Path).
+		Inc()
 
-	p.reqs.WithLabelValues(method, host, clientIp).Inc()
-	p.latency.WithLabelValues(method, host, clientIp).Observe(useTime)
+	p.latency.WithLabelValues(statusCode, r.Method, r.URL.Path).
+		Observe(float64(time.Since(start).Nanoseconds()) / 1000000000)
 }
