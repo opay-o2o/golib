@@ -29,13 +29,13 @@ type Prometheus struct {
 // New returns a new prometheus middleware.
 //
 // If buckets are empty then `DefaultBuckets` are set.
-func New(name string, buckets ...float64) *Prometheus {
+func New(name, env string, buckets ...float64) *Prometheus {
 	p := Prometheus{}
 	p.reqs = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name:        reqsName,
 			Help:        "How many HTTP requests processed, partitioned by status code, method and HTTP path.",
-			ConstLabels: prometheus.Labels{"service": name},
+			ConstLabels: prometheus.Labels{"service": name, "env": env},
 		},
 		[]string{"code", "method", "path"},
 	)
@@ -48,7 +48,7 @@ func New(name string, buckets ...float64) *Prometheus {
 	p.latency = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:        latencyName,
 		Help:        "How long it took to process the request, partitioned by status code, method and HTTP path.",
-		ConstLabels: prometheus.Labels{"service": name},
+		ConstLabels: prometheus.Labels{"service": name, "env": env},
 		Buckets:     buckets,
 	},
 		[]string{"code", "method", "path"},
