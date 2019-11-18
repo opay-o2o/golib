@@ -46,15 +46,15 @@ type Prometheus struct {
 // New returns a new prometheus middleware.
 //
 // If buckets are empty then `DefaultBuckets` are set.
-func New(name, env string, buckets ...float64) *Prometheus {
+func New(name, env, addr string, buckets ...float64) *Prometheus {
 	p := Prometheus{}
 	p.reqs = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name:        reqsName,
 			Help:        "How many GRPC requests processed, partitioned by method, server ip, client ip.",
-			ConstLabels: prometheus.Labels{"service": name, "env": env},
+			ConstLabels: prometheus.Labels{"service": name, "env": env, "server_addr": addr},
 		},
-		[]string{"method", "server_ip", "client_ip"},
+		[]string{"method", "client_ip"},
 	)
 	prometheus.MustRegister(p.reqs)
 
@@ -65,25 +65,25 @@ func New(name, env string, buckets ...float64) *Prometheus {
 	p.latency = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:        latencyName,
 		Help:        "How long it took to process the request, partitioned by method, server ip, client ip.",
-		ConstLabels: prometheus.Labels{"service": name, "env": env},
+		ConstLabels: prometheus.Labels{"service": name, "env": env, "server_addr": addr},
 		Buckets:     buckets,
 	},
-		[]string{"method", "server_ip", "client_ip"},
+		[]string{"method", "client_ip"},
 	)
 	prometheus.MustRegister(p.latency)
 
 	return &p
 }
 
-func (p *Prometheus) Trigger(ctx context.Context, host, method string, startTime time.Time) {
+func (p *Prometheus) Trigger(ctx context.Context, method string, startTime time.Time) {
 	clientIp, err := getClietIP(ctx)
 
 	if err != nil {
 		clientIp = "unknown"
 	}
 
-	p.reqs.WithLabelValues(method, host, clientIp).Inc()
+	p.reqs.WithLabelValues(method, clientIp).Inc()
 
 	useTime := float64(time.Since(startTime).Nanoseconds()) / 1000000000
-	p.latency.WithLabelValues(method, host, clientIp).Observe(useTime)
+	p.latency.WithLabelValues(method, clientIp).Observe(useTime)
 }
