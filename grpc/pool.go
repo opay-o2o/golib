@@ -3,7 +3,6 @@ package grpc
 import (
 	"context"
 	"google.golang.org/grpc"
-	"sync"
 	"time"
 )
 
@@ -14,7 +13,6 @@ func DefaultDialer(addr string) (*grpc.ClientConn, error) {
 }
 
 type Pool struct {
-	*sync.RWMutex
 	addr    string
 	clients chan *Connection
 	dialer  Dialer
