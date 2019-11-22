@@ -1,8 +1,8 @@
 package grpc
 
 import (
-	"context"
 	"google.golang.org/grpc"
+	"sync"
 	"time"
 )
 
@@ -13,66 +13,55 @@ func DefaultDialer(addr string) (*grpc.ClientConn, error) {
 }
 
 type Pool struct {
-	addr    string
-	clients chan *Connection
-	dialer  Dialer
-	idle    time.Duration
-	ttl     time.Duration
+	sync.RWMutex
+	conns    map[string]chan *Connection
+	dialer   Dialer
+	capacity int
+	idle     time.Duration
+	ttl      time.Duration
 }
 
 type Connection struct {
+	addr     string
 	conn     *grpc.ClientConn
 	pool     *Pool
 	createAt time.Time
 	lastUsed time.Time
 }
 
-func NewPool(dialer Dialer, addr string, init, capacity int, idle time.Duration, ttl ...time.Duration) (*Pool, error) {
+func NewPool(dialer Dialer, capacity int, idle time.Duration, ttl ...time.Duration) *Pool {
 	if capacity <= 0 {
 		capacity = 1
 	}
 
-	if init < 0 {
-		init = 0
-	}
-
-	if init > capacity {
-		init = capacity
-	}
-
 	p := &Pool{
-		addr:    addr,
-		clients: make(chan *Connection, capacity),
-		dialer:  dialer,
-		idle:    idle,
+		conns:    make(map[string]chan *Connection, 16),
+		capacity: capacity,
+		dialer:   dialer,
+		idle:     idle,
 	}
 
 	if len(ttl) > 0 {
 		p.ttl = ttl[0]
 	}
 
-	for i := 0; i < init; i++ {
-		c, err := dialer(addr)
-
-		if err != nil {
-			return nil, err
-		}
-
-		p.clients <- &Connection{
-			pool:     p,
-			conn:     c,
-			createAt: time.Now(),
-			lastUsed: time.Now(),
-		}
-	}
-
-	return p, nil
+	return p
 }
 
-func (p *Pool) Get(ctx context.Context) (*Connection, error) {
+func (p *Pool) Get(addr string) (*Connection, error) {
+	p.Lock()
+	clients, ok := p.conns[addr]
+
+	if !ok {
+		clients = make(chan *Connection, p.capacity)
+		p.conns[addr] = clients
+	}
+
+	p.Unlock()
+
 	for {
 		select {
-		case client := <-p.clients:
+		case client := <-clients:
 			if p.idle > 0 && client.lastUsed.Add(p.idle).Before(time.Now()) {
 				_ = client.conn.Close()
 				continue
@@ -86,13 +75,14 @@ func (p *Pool) Get(ctx context.Context) (*Connection, error) {
 			client.lastUsed = time.Now()
 			return client, nil
 		default:
-			c, err := p.dialer(p.addr)
+			c, err := p.dialer(addr)
 
 			if err != nil {
 				return nil, err
 			}
 
 			client := &Connection{
+				addr:     addr,
 				pool:     p,
 				conn:     c,
 				createAt: time.Now(),
@@ -119,8 +109,14 @@ func (c *Connection) Close() {
 		return
 	}
 
-	select {
-	case c.pool.clients <- c:
-	default:
+	c.pool.Lock()
+	clients := c.pool.conns[c.addr]
+	c.pool.Unlock()
+
+	if clients != nil {
+		select {
+		case clients <- c:
+		default:
+		}
 	}
 }
