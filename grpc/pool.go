@@ -94,6 +94,11 @@ func (p *Pool) Get(addr string) (*Connection, error) {
 	}
 }
 
+
+func (c *Connection) GetConn() *grpc.ClientConn {
+	return c.conn
+}
+
 func (c *Connection) Close() {
 	if c == nil || c.conn == nil {
 		return
