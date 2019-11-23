@@ -94,7 +94,6 @@ func (p *Pool) Get(addr string) (*Connection, error) {
 	}
 }
 
-
 func (c *Connection) GetConn() *grpc.ClientConn {
 	return c.conn
 }
@@ -118,10 +117,14 @@ func (c *Connection) Close() {
 	clients := c.pool.conns[c.addr]
 	c.pool.Unlock()
 
-	if clients != nil {
-		select {
-		case clients <- c:
-		default:
-		}
+	if clients == nil {
+		_ = c.conn.Close()
+		return
+	}
+
+	select {
+	case clients <- c:
+	default:
+		_ = c.conn.Close()
 	}
 }
