@@ -15,6 +15,7 @@ import (
 
 type Config struct {
 	Dir        string `toml:"dir"`
+	Prefix     string `toml:"prefix"`
 	Level      string `toml:"level"`
 	Color      bool   `toml:"color"`
 	Terminal   bool   `toml:"terminal"`
@@ -91,7 +92,7 @@ func NewLogger(c *Config) (*Logger, error) {
 
 func (l *Logger) refresh() bool {
 	oldFile := l.file
-	l.file = path.Join(l.c.Dir, time.Now().Format("20060102.log"))
+	l.file = path.Join(l.c.Dir, l.c.Prefix+time.Now().Format("20060102.log"))
 	return l.file != oldFile
 }
 
