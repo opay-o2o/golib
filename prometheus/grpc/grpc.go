@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"github.com/opay-o2o/golib/strings2"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc/peer"
 	"net"
@@ -10,14 +11,13 @@ import (
 	"time"
 )
 
-var (
-	// DefaultBuckets prometheus buckets in seconds.
-	DefaultBuckets = []float64{0.1, 0.3, 0.5, 1.0, 3.0, 5.0}
-)
+var DefaultBuckets = []float64{0.1, 0.3, 0.5, 1.0, 3.0, 5.0}
 
 const (
-	reqsName    = "grpc_requests_total"
-	latencyName = "grpc_request_duration_seconds"
+	VecReqCounterName  = "grpc_requests_total"
+	VecReqLatencyName  = "grpc_request_duration_seconds"
+	VecCallCounterName = "grpc_call_total"
+	VecCallLatencyName = "grpc_call_duration_seconds"
 )
 
 func getClietIP(ctx context.Context) (string, error) {
@@ -34,39 +34,29 @@ func getClietIP(ctx context.Context) (string, error) {
 	return strings.Split(pr.Addr.String(), ":")[0], nil
 }
 
-// Prometheus is a handler that exposes prometheus metrics for the number of requests,
-// the latency and the response size, partitioned by status code, method and HTTP path.
-//
-// Usage: pass its `ServeHTTP` to a route or globally.
 type Prometheus struct {
-	reqs    *prometheus.CounterVec
+	counter *prometheus.CounterVec
 	latency *prometheus.HistogramVec
 }
 
-// New returns a new prometheus middleware.
-//
-// If buckets are empty then `DefaultBuckets` are set.
-func New(name, env, addr string, buckets ...float64) *Prometheus {
+func New(name, env, addr string, vecNames ...string) *Prometheus {
+	counterName := strings2.IIf(len(vecNames) > 0, vecNames[0], VecReqCounterName)
+	latencyName := strings2.IIf(len(vecNames) > 1, vecNames[1], VecReqLatencyName)
+
 	p := Prometheus{}
-	p.reqs = prometheus.NewCounterVec(
+	p.counter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name:        reqsName,
-			Help:        "How many GRPC requests processed, partitioned by method, server ip, client ip.",
+			Name:        counterName,
 			ConstLabels: prometheus.Labels{"service": name, "env": env, "server_addr": addr},
 		},
 		[]string{"method", "client_ip"},
 	)
-	prometheus.MustRegister(p.reqs)
-
-	if len(buckets) == 0 {
-		buckets = DefaultBuckets
-	}
+	prometheus.MustRegister(p.counter)
 
 	p.latency = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:        latencyName,
-		Help:        "How long it took to process the request, partitioned by method, server ip, client ip.",
 		ConstLabels: prometheus.Labels{"service": name, "env": env, "server_addr": addr},
-		Buckets:     buckets,
+		Buckets:     DefaultBuckets,
 	},
 		[]string{"method", "client_ip"},
 	)
@@ -82,7 +72,7 @@ func (p *Prometheus) Trigger(ctx context.Context, method string, startTime time.
 		clientIp = "unknown"
 	}
 
-	p.reqs.WithLabelValues(method, clientIp).Inc()
+	p.counter.WithLabelValues(method, clientIp).Inc()
 
 	useTime := float64(time.Since(startTime).Nanoseconds()) / 1000000000
 	p.latency.WithLabelValues(method, clientIp).Observe(useTime)
