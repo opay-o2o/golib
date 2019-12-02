@@ -39,7 +39,7 @@ type Prometheus struct {
 	latency *prometheus.HistogramVec
 }
 
-func New(name, env, addr string, vecNames ...string) *Prometheus {
+func New(name, env string, vecNames ...string) *Prometheus {
 	counterName := strings2.IIf(len(vecNames) > 0, vecNames[0], VecReqCounterName)
 	latencyName := strings2.IIf(len(vecNames) > 1, vecNames[1], VecReqLatencyName)
 
@@ -47,33 +47,33 @@ func New(name, env, addr string, vecNames ...string) *Prometheus {
 	p.counter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name:        counterName,
-			ConstLabels: prometheus.Labels{"service": name, "env": env, "server_addr": addr},
+			ConstLabels: prometheus.Labels{"service": name, "env": env},
 		},
-		[]string{"method", "client_ip"},
+		[]string{"method", "server_addr", "client_ip"},
 	)
 	prometheus.MustRegister(p.counter)
 
 	p.latency = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:        latencyName,
-		ConstLabels: prometheus.Labels{"service": name, "env": env, "server_addr": addr},
+		ConstLabels: prometheus.Labels{"service": name, "env": env},
 		Buckets:     DefaultBuckets,
 	},
-		[]string{"method", "client_ip"},
+		[]string{"method", "server_addr", "client_ip"},
 	)
 	prometheus.MustRegister(p.latency)
 
 	return &p
 }
 
-func (p *Prometheus) Trigger(ctx context.Context, method string, startTime time.Time) {
+func (p *Prometheus) Trigger(ctx context.Context, addr, method string, startTime time.Time) {
 	clientIp, err := getClietIP(ctx)
 
 	if err != nil {
 		clientIp = "unknown"
 	}
 
-	p.counter.WithLabelValues(method, clientIp).Inc()
+	p.counter.WithLabelValues(method, addr, clientIp).Inc()
 
 	useTime := float64(time.Since(startTime).Nanoseconds()) / 1000000000
-	p.latency.WithLabelValues(method, clientIp).Observe(useTime)
+	p.latency.WithLabelValues(method, addr, clientIp).Observe(useTime)
 }
