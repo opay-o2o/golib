@@ -3,7 +3,6 @@ package grpc
 import (
 	"context"
 	"fmt"
-	"github.com/opay-o2o/golib/strings2"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc/peer"
 	"net"
@@ -40,8 +39,15 @@ type Prometheus struct {
 }
 
 func New(name, env string, vecNames ...string) *Prometheus {
-	counterName := strings2.IIf(len(vecNames) > 0, vecNames[0], VecReqCounterName)
-	latencyName := strings2.IIf(len(vecNames) > 1, vecNames[1], VecReqLatencyName)
+	counterName, latencyName := VecReqCounterName, VecReqLatencyName
+
+	if len(vecNames) > 0 {
+		counterName = vecNames[0]
+	}
+
+	if len(vecNames) > 1 {
+		latencyName = vecNames[1]
+	}
 
 	p := Prometheus{}
 	p.counter = prometheus.NewCounterVec(
