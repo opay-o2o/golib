@@ -1,6 +1,7 @@
 package grpc
 
 import (
+	"github.com/opay-o2o/golib/strings2"
 	"github.com/prometheus/client_golang/prometheus"
 	"strconv"
 )
@@ -26,13 +27,13 @@ func New(name, env, addr string, vecNames ...string) *Prometheus {
 			Name:        counterName,
 			ConstLabels: prometheus.Labels{"service": name, "env": env, "server_addr": addr},
 		},
-		[]string{"error_code"},
+		[]string{"error_code", "critical"},
 	)
 	prometheus.MustRegister(p.counter)
 
 	return &p
 }
 
-func (p *Prometheus) Trigger(errorCode int64) {
-	p.counter.WithLabelValues(strconv.FormatInt(errorCode, 10)).Inc()
+func (p *Prometheus) Trigger(errorCode int64, critical bool) {
+	p.counter.WithLabelValues(strconv.FormatInt(errorCode, 10), strings2.IIf(critical, "1", "0")).Inc()
 }
