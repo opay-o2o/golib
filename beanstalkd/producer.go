@@ -11,7 +11,8 @@ import (
 )
 
 type ProducerConfig struct {
-	Addrs []string `toml:"addrs"`
+	Addrs      []string `toml:"addrs"`
+	MaxJobSize int      `toml:"max_job_size"`
 }
 
 type Message struct {
@@ -49,6 +50,10 @@ func (c *Producer) Stop() {
 }
 
 func (c *Producer) Send(msg *Message) error {
+	if c.c.MaxJobSize > 0 && len(msg.Payload) > c.c.MaxJobSize {
+		return errors.New("message payload is too big")
+	}
+
 	select {
 	case <-c.ctx.Done():
 		return errors.New("producer is stoped")
