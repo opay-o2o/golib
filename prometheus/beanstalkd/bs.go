@@ -12,20 +12,20 @@ type Prometheus struct {
 	gauger *prometheus.GaugeVec
 }
 
-func New(name, env, addr string) *Prometheus {
+func New(name, env string) *Prometheus {
 	p := Prometheus{}
 	p.gauger = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name:        VecGaugeName,
-			ConstLabels: prometheus.Labels{"service": name, "env": env, "server_addr": addr},
+			ConstLabels: prometheus.Labels{"service": name, "env": env},
 		},
-		[]string{"tube", "key"},
+		[]string{"addr", "tube", "key"},
 	)
 	prometheus.MustRegister(p.gauger)
 
 	return &p
 }
 
-func (p *Prometheus) Trigger(tube, key string, value int64) {
-	p.gauger.WithLabelValues(tube, key).Set(float64(value))
+func (p *Prometheus) Trigger(addr, tube, key string, value int64) {
+	p.gauger.WithLabelValues(addr, tube, key).Set(float64(value))
 }
