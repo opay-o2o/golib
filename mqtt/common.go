@@ -1,7 +1,6 @@
 package mqtt
 
 import (
-	"errors"
 	"fmt"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"time"
@@ -14,6 +13,7 @@ type Config struct {
 	Password          string        `toml:"password"`
 	QoS               byte          `toml:"qos"`
 	ClientId          string        `toml:"client_id"`
+	ReceiveSaveMsg    bool          `toml:"receive_save_msg"`
 	ConnectTimeout    time.Duration `toml:"connect_timeout"`
 	DisconnectTimeout uint          `toml:"disconnect_timeout"`
 }
@@ -23,21 +23,17 @@ func (c *Config) GetAddr() string {
 }
 
 func connect(c *Config) (mqtt.Client, error) {
-	options := mqtt.NewClientOptions()
-	options.AddBroker(c.GetAddr())
-	options.SetUsername(c.Username)
-	options.SetPassword(c.Password)
-	options.SetClientID(c.ClientId)
-
+	options := mqtt.NewClientOptions().
+		AddBroker(c.GetAddr()).
+		SetUsername(c.Username).
+		SetPassword(c.Password).
+		SetClientID(c.ClientId).
+		SetCleanSession(!c.ReceiveSaveMsg).
+		SetConnectTimeout(c.ConnectTimeout * time.Millisecond)
 	client := mqtt.NewClient(options)
-	token := client.Connect()
 
-	if ok := token.WaitTimeout(c.ConnectTimeout * time.Millisecond); !ok {
-		return nil, errors.New("connection timeout")
-	}
-
-	if err := token.Error(); err != nil {
-		return nil, err
+	if token := client.Connect(); token.Wait() && token.Error() != nil {
+		return nil, token.Error()
 	}
 
 	return client, nil
