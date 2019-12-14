@@ -22,7 +22,9 @@ func (m *Message) String() string {
 
 type ProducerConfig struct {
 	*Config
-	Timeout uint `toml:"timeout"`
+	Timeout         time.Duration `toml:"timeout"`
+	RetryInterval   time.Duration `toml:"retry_interval"`
+	ReconnectOnFail int           `toml:"reconnect_on_fail"`
 }
 
 type Producer struct {
@@ -41,7 +43,7 @@ func (c *Producer) run() (err error) {
 	}
 
 	c.wg.Add(1)
-	go c.send()
+	go c.publish()
 
 	return
 }
@@ -62,8 +64,28 @@ func (c *Producer) Send(topic string, retained bool, payload []byte) error {
 	}
 }
 
-func (c *Producer) send() {
+func (c *Producer) retry(msg *Message, times *int) {
+	c.msgQueue <- msg
+	*times++
+
+	time.Sleep(c.c.RetryInterval * time.Millisecond)
+
+	if *times >= c.c.ReconnectOnFail {
+		client, err := connect(c.c.Config)
+
+		if err != nil {
+			c.logger.Errorf("can't connect to server | addr: %s | error: %s", c.c.GetAddr(), err)
+			return
+		}
+
+		c.client, *times = client, 0
+	}
+}
+
+func (c *Producer) publish() {
 	defer c.wg.Done()
+
+	retryTimes := 0
 
 	for {
 		select {
@@ -71,10 +93,16 @@ func (c *Producer) send() {
 			return
 		case msg := <-c.msgQueue:
 			token := c.client.Publish(msg.Topic, c.c.QoS, msg.Retained, msg.Payload)
-			token.WaitTimeout(time.Duration(c.c.Timeout) * time.Millisecond)
+
+			if ok := token.WaitTimeout(c.c.Timeout * time.Millisecond); !ok {
+				c.logger.Errorf("publish message timeout | addr: %s | message: %s", c.c.GetAddr(), msg)
+				c.retry(msg, &retryTimes)
+				continue
+			}
 
 			if err := token.Error(); err != nil {
 				c.logger.Errorf("can't publish message | addr: %s | message: %s | error: %s", c.c.GetAddr(), msg, err)
+				c.retry(msg, &retryTimes)
 				continue
 			}
 

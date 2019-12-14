@@ -2,6 +2,7 @@ package mqtt
 
 import (
 	"context"
+	"errors"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/opay-o2o/golib/logger"
 	"sync"
@@ -10,8 +11,8 @@ import (
 
 type ConsumerConfig struct {
 	*Config
-	Timeout uint `toml:"timeout"`
-	Worker  int  `toml:"worker"`
+	Timeout time.Duration `toml:"timeout"`
+	Worker  int           `toml:"worker"`
 }
 
 type Consumer struct {
@@ -23,10 +24,6 @@ type Consumer struct {
 	ctx      context.Context
 	cancel   context.CancelFunc
 	wg       *sync.WaitGroup
-}
-
-func (c *Consumer) Client() mqtt.Client {
-	return c.client
 }
 
 func (c *Consumer) run() (err error) {
@@ -43,7 +40,10 @@ func (c *Consumer) run() (err error) {
 	token := c.client.SubscribeMultiple(filters, func(client mqtt.Client, msg mqtt.Message) {
 		c.msgQueue <- msg
 	})
-	token.WaitTimeout(time.Duration(c.c.Timeout) * time.Millisecond)
+
+	if ok := token.WaitTimeout(c.c.Timeout * time.Millisecond); !ok {
+		return errors.New("subscribe timeout")
+	}
 
 	if err = token.Error(); err != nil {
 		return
@@ -66,7 +66,10 @@ func (c *Consumer) Stop() {
 	}
 
 	token := c.client.Unsubscribe(topics...)
-	token.WaitTimeout(time.Duration(c.c.Timeout) * time.Millisecond)
+
+	if ok := token.WaitTimeout(c.c.Timeout * time.Millisecond); !ok {
+		c.logger.Errorf("unsubscribe topics timeout | addr: %s | topics: %+v", c.c.GetAddr(), topics)
+	}
 
 	if err := token.Error(); err != nil {
 		c.logger.Errorf("can't unsubscribe topics | addr: %s | topics: %+v | error: %s", c.c.GetAddr(), topics, err)
