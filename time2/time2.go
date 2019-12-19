@@ -51,5 +51,5 @@ func FormatDt(t time.Time, loc ...*time.Location) string {
 }
 
 func OffsetTS(offset int64) string {
-	return fmt.Sprintf("%02d:%02d:%02d", offset/3600, (offset%3600)/60, offset%60)
+	return fmt.Sprintf("%02d:%02d:%02d", (offset%86400)/3600, (offset%3600)/60, offset%60)
 }
