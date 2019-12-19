@@ -1,6 +1,9 @@
 package time2
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 const (
 	DateLayout     = "20060102"
@@ -45,4 +48,8 @@ func FormatD(t time.Time, loc ...*time.Location) string {
 
 func FormatDt(t time.Time, loc ...*time.Location) string {
 	return Format(t, DateTimeLayout, loc...)
+}
+
+func OffsetTS(offset int64) string {
+	return fmt.Sprintf("%02d:%02d:%02d", offset/3600, (offset%3600)/60, offset%60)
 }
