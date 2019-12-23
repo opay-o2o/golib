@@ -186,7 +186,7 @@ func getClietIP(ctx stdCtx.Context) (string, error) {
 	return strings.Split(pr.Addr.String(), ":")[0], nil
 }
 
-func (g *VectorGroup) GrpcTrigger(ctx stdCtx.Context, addr, method string, startTime time.Time) {
+func (g *VectorGroup) GrpcServTrigger(ctx stdCtx.Context, method string, startTime time.Time) {
 	clientIp, err := getClietIP(ctx)
 
 	if err != nil {
@@ -195,8 +195,15 @@ func (g *VectorGroup) GrpcTrigger(ctx stdCtx.Context, addr, method string, start
 
 	duration := float64(time.Since(startTime).Nanoseconds()) / 1000000000
 
-	g.counter.Trigger(0, method, addr, clientIp)
-	g.timer.Trigger(duration, method, addr, clientIp)
+	g.counter.Trigger(0, method, clientIp)
+	g.timer.Trigger(duration, method, clientIp)
+}
+
+func (g *VectorGroup) GrpcCallTrigger(addr, method string, startTime time.Time) {
+	duration := float64(time.Since(startTime).Nanoseconds()) / 1000000000
+
+	g.counter.Trigger(0, method, addr)
+	g.timer.Trigger(duration, method, addr)
 }
 
 func (m *Monitor) Metrics() context.Handler {
