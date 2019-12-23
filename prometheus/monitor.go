@@ -69,7 +69,13 @@ type Monitor struct {
 	logger  *logger.Logger
 }
 
-func (m *Monitor) Register(config *VectorConfig, constLabels map[string]string) (err error) {
+func (m *Monitor) Register(config *VectorConfig, labels map[string]string) (err error) {
+	constLabels := map[string]string{"service": m.config.Service, "env": m.config.Env}
+
+	for k, v := range labels {
+		constLabels[k] = v
+	}
+
 	var vec prometheus.Collector
 
 	switch config.Type {
