@@ -127,21 +127,27 @@ func (m *Monitor) Trigger(name string, value float64, labels ...string) {
 }
 
 func (m *Monitor) Vector(name string) (vector *Vector) {
-	return m.vectors[name]
+	if vec, ok := m.vectors[name]; ok {
+		vector = vec
+	} else {
+		m.logger.Warningf("unknown monitor vector '%s'", name)
+	}
+
+	return
 }
 
-func (m *Monitor) Group(counterName, timerName string) (group *VectorGroup, err error) {
+func (m *Monitor) Group(counterName, timerName string) (group *VectorGroup) {
 	counterVector, ok := m.vectors[counterName]
 
 	if !ok {
-		err = errors.New("unknown monitor vector")
+		m.logger.Warningf("unknown monitor vector '%s'", counterName)
 		return
 	}
 
 	timerVector, ok := m.vectors[timerName]
 
 	if !ok {
-		err = errors.New("unknown monitor vector")
+		m.logger.Warningf("unknown monitor vector '%s'", timerName)
 		return
 	}
 
