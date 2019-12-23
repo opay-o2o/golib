@@ -36,9 +36,10 @@ type VectorConfig struct {
 }
 
 type Config struct {
-	Env     string                   `toml:"env"`
-	Service string                   `toml:"service"`
-	Vectors map[string]*VectorConfig `toml:"vectors"`
+	Env     string          `toml:"env"`
+	Service string          `toml:"service"`
+	Host    string          `toml:"host"`
+	Vectors []*VectorConfig `toml:"vectors"`
 }
 
 type Vector struct {
@@ -69,14 +70,9 @@ type Monitor struct {
 	logger  *logger.Logger
 }
 
-func (m *Monitor) Register(config *VectorConfig, labels map[string]string) (err error) {
-	constLabels := map[string]string{"service": m.config.Service, "env": m.config.Env}
-
-	for k, v := range labels {
-		constLabels[k] = v
-	}
-
+func (m *Monitor) Register(config *VectorConfig) (err error) {
 	var vec prometheus.Collector
+	constLabels := map[string]string{"service": m.config.Service, "env": m.config.Env, "host": m.config.Host}
 
 	switch config.Type {
 	case TypeHistogram:
@@ -136,15 +132,26 @@ func (m *Monitor) Trigger(name string, value float64, labels ...string) (err err
 	return vector.Trigger(value, labels...)
 }
 
-func (m *Monitor) Group(counter, timer string) (group *VectorGroup, err error) {
-	counterVector, ok := m.vectors[counter]
+func (m *Monitor) Vector(name string) (vector *Vector, err error) {
+	vector, ok := m.vectors[name]
 
 	if !ok {
 		err = errors.New("unknown monitor vector")
 		return
 	}
 
-	timerVector, ok := m.vectors[timer]
+	return
+}
+
+func (m *Monitor) Group(counterName, timerName string) (group *VectorGroup, err error) {
+	counterVector, ok := m.vectors[counterName]
+
+	if !ok {
+		err = errors.New("unknown monitor vector")
+		return
+	}
+
+	timerVector, ok := m.vectors[timerName]
 
 	if !ok {
 		err = errors.New("unknown monitor vector")
