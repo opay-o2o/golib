@@ -47,7 +47,7 @@ type Vector struct {
 	vec    prometheus.Collector
 }
 
-func (v *Vector) Trigger(value float64, labels ...string) (err error) {
+func (v *Vector) Trigger(value float64, labels ...string) {
 	switch v.config.Type {
 	case TypeHistogram:
 		v.vec.(*prometheus.HistogramVec).WithLabelValues(labels...).Observe(value)
@@ -57,11 +57,7 @@ func (v *Vector) Trigger(value float64, labels ...string) (err error) {
 		v.vec.(*prometheus.SummaryVec).WithLabelValues(labels...).Observe(value)
 	case TypeCounter:
 		v.vec.(*prometheus.CounterVec).WithLabelValues(labels...).Inc()
-	default:
-		err = errors.New("invalid monitor type")
 	}
-
-	return
 }
 
 type Monitor struct {
@@ -122,25 +118,16 @@ func (m *Monitor) Register(config *VectorConfig) (err error) {
 	return
 }
 
-func (m *Monitor) Trigger(name string, value float64, labels ...string) (err error) {
-	vector, ok := m.vectors[name]
-
-	if !ok {
-		return errors.New("unknown monitor vector")
+func (m *Monitor) Trigger(name string, value float64, labels ...string) {
+	if vector, ok := m.vectors[name]; ok {
+		vector.Trigger(value, labels...)
+	} else {
+		m.logger.Warningf("unknown monitor vector '%s'", name)
 	}
-
-	return vector.Trigger(value, labels...)
 }
 
-func (m *Monitor) Vector(name string) (vector *Vector, err error) {
-	vector, ok := m.vectors[name]
-
-	if !ok {
-		err = errors.New("unknown monitor vector")
-		return
-	}
-
-	return
+func (m *Monitor) Vector(name string) (vector *Vector) {
+	return m.vectors[name]
 }
 
 func (m *Monitor) Group(counterName, timerName string) (group *VectorGroup, err error) {
@@ -173,16 +160,10 @@ func (g *VectorGroup) HttpTrigger(ctx context.Context) {
 	ctx.Next()
 	r := ctx.Request()
 	statusCode := strconv.Itoa(ctx.GetStatusCode())
-
-	if err := g.counter.Trigger(0, statusCode, r.Method, r.URL.Path); err != nil {
-		g.logger.Errorf("can't trigger monitor | name: %s | error: %s", g.counter.config.Name, err)
-	}
-
 	duration := float64(time.Since(start).Nanoseconds()) / 1000000000
 
-	if err := g.timer.Trigger(duration, statusCode, r.Method, r.URL.Path); err != nil {
-		g.logger.Errorf("can't trigger monitor | name: %s | error: %s", g.counter.config.Name, err)
-	}
+	g.counter.Trigger(0, statusCode, r.Method, r.URL.Path)
+	g.timer.Trigger(duration, statusCode, r.Method, r.URL.Path)
 }
 
 func getClietIP(ctx stdCtx.Context) (string, error) {
@@ -206,15 +187,10 @@ func (g *VectorGroup) GrpcTrigger(ctx stdCtx.Context, addr, method string, start
 		clientIp = "unknown"
 	}
 
-	if err := g.counter.Trigger(0, method, addr, clientIp); err != nil {
-		g.logger.Errorf("can't trigger monitor | name: %s | error: %s", g.counter.config.Name, err)
-	}
-
 	duration := float64(time.Since(startTime).Nanoseconds()) / 1000000000
 
-	if err := g.timer.Trigger(duration, method, addr, clientIp); err != nil {
-		g.logger.Errorf("can't trigger monitor | name: %s | error: %s", g.counter.config.Name, err)
-	}
+	g.counter.Trigger(0, method, addr, clientIp)
+	g.timer.Trigger(duration, method, addr, clientIp)
 }
 
 func (m *Monitor) Metrics() context.Handler {
