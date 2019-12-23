@@ -220,3 +220,19 @@ func (g *VectorGroup) GrpcTrigger(ctx stdCtx.Context, addr, method string, start
 func (m *Monitor) Metrics() context.Handler {
 	return iris.FromStd(promhttp.Handler())
 }
+
+func NewMonitor(config *Config, logger *logger.Logger) (monitor *Monitor, err error) {
+	monitor = &Monitor{
+		config:  config,
+		vectors: make(map[string]*Vector, len(config.Vectors)),
+		logger:  logger,
+	}
+
+	for _, c := range config.Vectors {
+		if err = monitor.Register(c); err != nil {
+			break
+		}
+	}
+
+	return
+}
