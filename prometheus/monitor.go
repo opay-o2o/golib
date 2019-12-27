@@ -45,11 +45,12 @@ type Config struct {
 type Vector struct {
 	config *VectorConfig
 	vec    prometheus.Collector
+	logger *logger.Logger
 }
 
-func (v *Vector) Trigger(value float64, labels ...string) (err error) {
+func (v *Vector) Trigger(value float64, labels ...string) {
 	if len(labels) != len(v.config.Labels) {
-		err = fmt.Errorf("invalid vector labels of '%s'", v.config.Name)
+		v.logger.Errorf("invalid vector labels | name: %s | labels: %+v", v.config.Name, labels)
 		return
 	}
 
@@ -63,8 +64,6 @@ func (v *Vector) Trigger(value float64, labels ...string) (err error) {
 	case TypeCounter:
 		v.vec.(*prometheus.CounterVec).WithLabelValues(labels...).Inc()
 	}
-
-	return
 }
 
 type Monitor struct {
@@ -120,28 +119,27 @@ func (m *Monitor) Register(config *VectorConfig) (err error) {
 		return
 	}
 
-	m.vectors[config.Name] = &Vector{config: config, vec: vec}
+	m.vectors[config.Name] = &Vector{config: config, vec: vec, logger: m.logger}
 	prometheus.MustRegister(vec)
 	return
 }
 
-func (m *Monitor) Trigger(name string, value float64, labels ...string) (err error) {
+func (m *Monitor) Trigger(name string, value float64, labels ...string) {
 	vector, ok := m.vectors[name]
 
 	if !ok {
-		err = fmt.Errorf("unknown monitor vector '%s'", name)
+		m.logger.Errorf("unknown monitor vector | name: %s", name)
 		return
 	}
 
-	err = vector.Trigger(value, labels...)
-	return
+	vector.Trigger(value, labels...)
 }
 
-func (m *Monitor) Vector(name string) (vector *Vector, err error) {
+func (m *Monitor) Vector(name string) (vector *Vector) {
 	vec, ok := m.vectors[name]
 
 	if !ok {
-		err = fmt.Errorf("unknown monitor vector '%s'", name)
+		m.logger.Errorf("unknown monitor vector | name: %s", name)
 		return
 	}
 
@@ -149,18 +147,18 @@ func (m *Monitor) Vector(name string) (vector *Vector, err error) {
 	return
 }
 
-func (m *Monitor) Group(counter, timer string) (group *VectorGroup, err error) {
+func (m *Monitor) Group(counter, timer string) (group *VectorGroup) {
 	counterVector, ok := m.vectors[counter]
 
 	if !ok {
-		err = fmt.Errorf("unknown monitor vector '%s'", counter)
+		m.logger.Errorf("unknown monitor vector | name: %s", counter)
 		return
 	}
 
 	timerVector, ok := m.vectors[timer]
 
 	if !ok {
-		err = fmt.Errorf("unknown monitor vector '%s'", timer)
+		m.logger.Errorf("unknown monitor vector | name: %s", timer)
 		return
 	}
 
@@ -182,13 +180,8 @@ func (g *VectorGroup) HttpTrigger(ctx context.Context) {
 	duration := float64(time.Since(start).Nanoseconds()) / 1000000000
 	labels := []string{statusCode, r.Method, r.URL.Path}
 
-	if err := g.counter.Trigger(0, labels...); err != nil {
-		g.logger.Warningf("trigger monitor vector failed | name: %s | labels: %+v | error: %s", g.counter.config.Name, labels, err)
-	}
-
-	if err := g.timer.Trigger(duration, labels...); err != nil {
-		g.logger.Warningf("trigger monitor vector failed | name: %s | labels: %+v | error: %s", g.timer.config.Name, labels, err)
-	}
+	g.counter.Trigger(0, labels...)
+	g.timer.Trigger(duration, labels...)
 }
 
 func getClietIP(ctx stdCtx.Context) (ip string, err error) {
@@ -218,33 +211,23 @@ func (g *VectorGroup) GrpcServTrigger(ctx stdCtx.Context, method string, startTi
 	duration := float64(time.Since(startTime).Nanoseconds()) / 1000000000
 	labels := []string{method, clientIp}
 
-	if err := g.counter.Trigger(0, method, clientIp); err != nil {
-		g.logger.Warningf("trigger monitor vector failed | name: %s | labels: %+v | error: %s", g.counter.config.Name, labels, err)
-	}
-
-	if err := g.timer.Trigger(duration, method, clientIp); err != nil {
-		g.logger.Warningf("trigger monitor vector failed | name: %s | labels: %+v | error: %s", g.timer.config.Name, labels, err)
-	}
+	g.counter.Trigger(0, labels...)
+	g.timer.Trigger(duration, labels...)
 }
 
 func (g *VectorGroup) GrpcCallTrigger(addr, method string, startTime time.Time) {
 	duration := float64(time.Since(startTime).Nanoseconds()) / 1000000000
 	labels := []string{method, addr}
 
-	if err := g.counter.Trigger(0, method, addr); err != nil {
-		g.logger.Warningf("trigger monitor vector failed | name: %s | labels: %+v | error: %s", g.counter.config.Name, labels, err)
-	}
-
-	if err := g.timer.Trigger(duration, method, addr); err != nil {
-		g.logger.Warningf("trigger monitor vector failed | name: %s | labels: %+v | error: %s", g.timer.config.Name, labels, err)
-	}
+	g.counter.Trigger(0, labels...)
+	g.timer.Trigger(duration, labels...)
 }
 
 func (m *Monitor) Metrics() context.Handler {
 	return iris.FromStd(promhttp.Handler())
 }
 
-func NewMonitor(config *Config, logger *logger.Logger) (monitor *Monitor, err error) {
+func New(config *Config, logger *logger.Logger) (monitor *Monitor, err error) {
 	monitor = &Monitor{
 		config:  config,
 		vectors: make(map[string]*Vector, len(config.Vectors)),
