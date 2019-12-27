@@ -9,6 +9,7 @@ import (
 	"github.com/opay-o2o/golib/logger"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/peer"
 	"net"
 	"strconv"
@@ -172,9 +173,10 @@ type VectorGroup struct {
 	logger  *logger.Logger
 }
 
-func (g *VectorGroup) HttpTrigger(ctx context.Context) {
+func (g *VectorGroup) HttpInterceptor(ctx context.Context) {
 	start := time.Now()
 	ctx.Next()
+
 	r := ctx.Request()
 	statusCode := strconv.Itoa(ctx.GetStatusCode())
 	duration := float64(time.Since(start).Nanoseconds()) / 1000000000
@@ -201,26 +203,68 @@ func getClietIP(ctx stdCtx.Context) (ip string, err error) {
 	return
 }
 
-func (g *VectorGroup) GrpcServTrigger(ctx stdCtx.Context, method string, startTime time.Time) {
-	clientIp, err := getClietIP(ctx)
+func (g *VectorGroup) GrpcServerUnaryInterceptor(ctx stdCtx.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	start := time.Now()
+	clientIp := "unknown"
 
-	if err != nil {
-		clientIp = "unknown"
+	if ip, e := getClietIP(ctx); e == nil {
+		clientIp = ip
 	}
 
-	duration := float64(time.Since(startTime).Nanoseconds()) / 1000000000
-	labels := []string{method, clientIp}
+	resp, err = handler(ctx, req)
+
+	duration := float64(time.Since(start).Nanoseconds()) / 1000000000
+	labels := []string{info.FullMethod, clientIp}
 
 	g.counter.Trigger(0, labels...)
 	g.timer.Trigger(duration, labels...)
+
+	return
 }
 
-func (g *VectorGroup) GrpcCallTrigger(addr, method string, startTime time.Time) {
-	duration := float64(time.Since(startTime).Nanoseconds()) / 1000000000
-	labels := []string{method, addr}
+func (g *VectorGroup) GrpcServerStreamInterceptor(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
+	start := time.Now()
+	clientIp := "unknown"
+
+	if ip, e := getClietIP(stream.Context()); e == nil {
+		clientIp = ip
+	}
+
+	err = handler(srv, stream)
+
+	duration := float64(time.Since(start).Nanoseconds()) / 1000000000
+	labels := []string{info.FullMethod, clientIp}
 
 	g.counter.Trigger(0, labels...)
 	g.timer.Trigger(duration, labels...)
+
+	return
+}
+
+func (g *VectorGroup) GrpcClientUnaryInterceptor(ctx stdCtx.Context, method string, req, resp interface{}, conn *grpc.ClientConn, invoker grpc.UnaryInvoker, options ...grpc.CallOption) (err error) {
+	start := time.Now()
+	err = invoker(ctx, method, req, resp, conn, options...)
+
+	duration := float64(time.Since(start).Nanoseconds()) / 1000000000
+	labels := []string{method, conn.Target()}
+
+	g.counter.Trigger(0, labels...)
+	g.timer.Trigger(duration, labels...)
+
+	return
+}
+
+func (g *VectorGroup) GrpcClientStreamInterceptor(ctx stdCtx.Context, desc *grpc.StreamDesc, conn *grpc.ClientConn, method string, streamer grpc.Streamer, options ...grpc.CallOption) (stream grpc.ClientStream, err error) {
+	start := time.Now()
+	stream, err = streamer(ctx, desc, conn, method, options...)
+
+	duration := float64(time.Since(start).Nanoseconds()) / 1000000000
+	labels := []string{method, conn.Target()}
+
+	g.counter.Trigger(0, labels...)
+	g.timer.Trigger(duration, labels...)
+
+	return
 }
 
 func (m *Monitor) Metrics() context.Handler {
