@@ -39,14 +39,14 @@ func (s *Server) Running() bool {
 	}
 }
 
-func (s *Server) Start() error {
+func (s *Server) Start(options ...grpc.ServerOption) error {
 	listener, err := net.Listen("tcp", s.config.GetAddr())
 
 	if err != nil {
 		return err
 	}
 
-	s.server = grpc.NewServer()
+	s.server = grpc.NewServer(options...)
 	s.router.RegGrpcService(s.server)
 	s.ctx, s.canceler = context.WithCancel(context.Background())
 
