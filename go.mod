@@ -26,7 +26,6 @@ require (
 	github.com/iris-contrib/httpexpect v0.0.0-20180314041918-ebe99fcebbce // indirect
 	github.com/jcmturner/gofork v1.0.0 // indirect
 	github.com/jinzhu/gorm v1.9.11
-	github.com/json-iterator/go v1.1.8 // indirect
 	github.com/juju/errors v0.0.0-20190930114154-d42613fe1ab9 // indirect
 	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
 	github.com/kataras/golog v0.0.9 // indirect
@@ -39,7 +38,7 @@ require (
 	github.com/moul/http2curl v1.0.0 // indirect
 	github.com/olivere/elastic/v7 v7.0.9
 	github.com/pierrec/lz4 v2.3.0+incompatible // indirect
-	github.com/prometheus/client_golang v1.2.1 // indirect
+	github.com/prometheus/client_golang v1.11.1
 	github.com/rcrowley/go-metrics v0.0.0-20190826022208-cac0b30c2563 // indirect
 	github.com/ryanuber/columnize v2.1.0+incompatible // indirect
 	github.com/sergi/go-diff v1.0.0 // indirect
@@ -52,12 +51,8 @@ require (
 	github.com/yudai/gojsondiff v1.0.0 // indirect
 	github.com/yudai/golcs v0.0.0-20170316035057-ecda9a501e82 // indirect
 	github.com/yudai/pp v2.0.1+incompatible // indirect
-	golang.org/x/crypto v0.0.0-20191106202628-ed6320f186d4 // indirect
-	golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553 // indirect
-	golang.org/x/sys v0.0.0-20191105231009-c1f44814a5cd // indirect
 	google.golang.org/appengine v1.6.5 // indirect
 	google.golang.org/genproto v0.0.0-20191028173616-919d9bdd9fe6 // indirect
 	google.golang.org/grpc v1.25.0
 	gopkg.in/jcmturner/gokrb5.v7 v7.3.0 // indirect
-	gopkg.in/yaml.v2 v2.2.5 // indirect
 )
